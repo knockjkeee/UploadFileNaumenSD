@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Scope;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -16,6 +17,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import ru.newsystems.UploadFileNaumenSD.domain.MessageResponse;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -25,6 +27,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
+@Scope("prototype")
 public class SupportService {
     private static final Logger logger = LoggerFactory.getLogger(SupportService.class);
 
@@ -63,53 +66,41 @@ public class SupportService {
         return "http://" + host + ":" + port + restServices + postMethodCheckStatus;
     }
 
-    public boolean checkPingHost(){
+    public boolean checkPingHost() {
         return pingHost(host, Integer.parseInt(port), 1000);
     }
 
     public int pushMultipartFile(MultipartFile file, String uUIDParam) throws IOException {
+        String dateTimeNow = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yy"));
+        MultipartFile newMultipartFile = getNewMultipartFile(file, dateTimeNow);
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = getRequestEntity(newMultipartFile, null);
+
+        //        String serverUrl = "http://192.168.246.76:8080/sd/services/rest/add-file/serviceCall$1615707?accessKey=b2921f00-1f46-4eaf-a90c-c8633f9bf8ca";
+        String serverUrl = "http://" + host + ":" + port + restServices + getMethodAddFile + "/" + uUIDParam + accessKey;
+        ResponseEntity<String> response = restTemplate.postForEntity(serverUrl, requestEntity, String.class);
+        getLogging(file, uUIDParam, newMultipartFile);
+        return response.getStatusCodeValue();
+    }
+
+    public HttpEntity<MultiValueMap<String, Object>> getRequestEntity(MultipartFile newMultipartFile, MessageResponse messageResponse) {
+//        MultiValueMap<String,Object> multipartRequest = new LinkedMultiValueMap<>();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-        String dateTimeNow = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yy"));
-//        System.out.println(dateTimeNow);
-////                MultipartFile newMultipartFile;
-////                Files.copy(newMultipartFile, )
-//                file.getOriginalFilename().replace(file.getOriginalFilename(), file.getOriginalFilename()).concat("_" + dateTimeNow);
-//
-//
-////                MultipartFile multipartFile = new  MockMultipartFile(FilenameUtils.getBaseName(oldMultipartFile.getOriginalFilename()).concat(new SimpleDateFormat("yyyyMMddHHmm").format(new Date())) + "." + FilenameUtils.getExtension(oldMultipartFile.getOriginalFilename()), oldMultipartFile.getInputStream());
-//                file.getName().replace(file.getName(), file.getName().concat("_" + dateTimeNow));
-//                System.out.println(file.getName().replace(file.getName(), file.getName().concat("_" + dateTimeNow)));
-        MultipartFile newMultipartFile = getNewMultipartFile(file, dateTimeNow);
 
         Resource invoicesResource = newMultipartFile.getResource();
         LinkedMultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", invoicesResource);
-        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-//        String serverUrl = "http://192.168.246.76:8080/sd/services/rest/add-file/serviceCall$1615707?accessKey=b2921f00-1f46-4eaf-a90c-c8633f9bf8ca";
-        String serverUrl = "http://" + host + ":" + port + restServices + getMethodAddFile + "/" + uUIDParam + accessKey;
 
-//        System.out.println(serverUrl);
-
-        ResponseEntity<String> response = restTemplate.postForEntity(serverUrl, requestEntity, String.class);
-//        System.out.println(response.getStatusCodeValue());
-
-        getLogging(file, uUIDParam, newMultipartFile);
-
-//        logger.warn("File ");
-//
-//        System.out.println("Name : " + file.getName());
-//        System.out.println("Type : " + file.getContentType());
-//        System.out.println("Name : " + file.getOriginalFilename());
-//        System.out.println("Size : " + file.getSize());
-//
-//        System.out.println(newMultipartFile.getName());
-//        System.out.println("Name : " + newMultipartFile.getName());
-//        System.out.println("Type : " + newMultipartFile.getContentType());
-//        System.out.println("Name : " + newMultipartFile.getOriginalFilename());
-//        System.out.println("Size : " + newMultipartFile.getSize());
-
-        return response.getStatusCodeValue();
+        body.set("file", invoicesResource);
+        System.out.println("messageResponse = " + messageResponse);
+        if (messageResponse == null) {
+            return new HttpEntity<>(body, headers);
+        } else {
+            HttpHeaders requestHeadersJSON = new HttpHeaders();
+            requestHeadersJSON.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<MessageResponse> messageResponseHttpEntity = new HttpEntity<>(messageResponse, requestHeadersJSON);
+            body.set("msg", messageResponseHttpEntity);
+            return new HttpEntity<>(body, headers);
+        }
     }
 
     private void getLogging(MultipartFile file, String uUIDParam, MultipartFile newMultipartFile) {
