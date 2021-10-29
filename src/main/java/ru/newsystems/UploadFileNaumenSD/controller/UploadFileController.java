@@ -66,9 +66,8 @@ public class UploadFileController {
     public ResponseEntity<String> uploadFileToNSD(@RequestPart("file") MultipartFile file,
                                                   @RequestPart("msg") MessageResponse messageResponse
     ) throws IOException {
-        System.out.println("messageResponse!!!!!!!! = " + messageResponse);
-        String checkStatusUrl = multiPartSupportService.getCheckStatusUrl();
 
+        String checkStatusUrl = multiPartSupportService.getCheckStatusUrl();
         if (!multiPartSupportService.checkPingHost()) {
             logger.error("Host: " + host + ":" + port + " is not available, try later");
         } else {
@@ -111,31 +110,12 @@ public class UploadFileController {
             }
         }
 
-//        System.out.println("localFileFromMessageResponse = " + localFileFromMessageResponse.getName());
-//        System.out.println("length = " + localFileFromMessageResponse.length());
-//        System.out.println("localFileFromMessageResponse out while= " + localFileFromMessageResponse.exists());
-
         String contentTypeLocalFile = localPathFilesService.getResponseTempFileContentType(localFileFromMessageResponse);
         MultipartFile mockMultiPartFile = localPathFilesService.createMockMultiPartFile(messageResponse, contentTypeLocalFile, localFileFromMessageResponse);
-
-//        System.out.println("contentTypeLocalFile= " + contentTypeLocalFile);
         localPathFilesService.deleteLocalFile(localFileFromMessageResponse, pathFileFromMessageResponse);
-
-//
-//        System.out.println("------------------");
-//
-//        assert mockMultiPartFile != null;
-//        System.out.println("mockMultiPartFile = " + mockMultiPartFile.getName());
-//        System.out.println("mockMultiPartFile = " + mockMultiPartFile.getOriginalFilename());
-//        System.out.println("mockMultiPartFile = " + mockMultiPartFile.getContentType());
-//        System.out.println("mockMultiPartFile = " + mockMultiPartFile.getSize());
-
         HttpEntity<MultiValueMap<String, Object>> requestEntity = multiPartSupportService.getRequestEntity(mockMultiPartFile, messageResponse);
-
-//        MessageResponse msg = new MessageResponse();
         try {
             ResponseEntity<String> responseEntity = restTemplate.postForEntity("http://localhost:" + environment.getProperty("server.port") + "/api/v1/upload", requestEntity, String.class);
-//            System.out.println("responseEntity = " + responseEntity.getStatusCodeValue());
         } catch (Exception e) {
             System.err.println("ERRROR");
         }

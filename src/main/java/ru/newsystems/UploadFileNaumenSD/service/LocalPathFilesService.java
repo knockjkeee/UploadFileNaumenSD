@@ -65,9 +65,9 @@ public class LocalPathFilesService {
     public void deleteLocalFile(File file, String path) {
         boolean delete = file.delete();
         if (delete) {
-            logger.warn("File " + file.getName() + "deleted at the path " + path);
+            logger.warn("File " + file.getName() + " deleted at the path " + path);
         } else {
-            logger.warn("File " + file.getName() + "not deleted at the path " + path);
+            logger.warn("File " + file.getName() + " not deleted at the path " + path);
         }
     }
 }
