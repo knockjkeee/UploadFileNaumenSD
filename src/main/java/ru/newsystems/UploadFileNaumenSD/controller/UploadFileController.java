@@ -112,12 +112,14 @@ public class UploadFileController {
 
         String contentTypeLocalFile = localPathFilesService.getResponseTempFileContentType(localFileFromMessageResponse);
         MultipartFile mockMultiPartFile = localPathFilesService.createMockMultiPartFile(messageResponse, contentTypeLocalFile, localFileFromMessageResponse);
+
         localPathFilesService.deleteLocalFile(localFileFromMessageResponse, pathFileFromMessageResponse);
+
         HttpEntity<MultiValueMap<String, Object>> requestEntity = multiPartSupportService.getRequestEntity(mockMultiPartFile, messageResponse);
         try {
             ResponseEntity<String> responseEntity = restTemplate.postForEntity("http://localhost:" + environment.getProperty("server.port") + "/api/v1/upload", requestEntity, String.class);
         } catch (Exception e) {
-            System.err.println("ERRROR");
+            logger.error(e.getMessage());
         }
         return ResponseEntity.ok("ok");
     }

@@ -13,6 +13,7 @@ import ru.newsystems.UploadFileNaumenSD.domain.MessageResponse;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.URLConnection;
 import java.util.List;
 
 @Service
@@ -44,7 +45,9 @@ public class LocalPathFilesService {
     public String getResponseTempFileContentType(File file) {
         String fileContentType = null;
         try {
-            fileContentType = file.toURI().toURL().openConnection().getContentType();
+            URLConnection connection = file.toURI().toURL().openConnection();
+            fileContentType = connection.getContentType();
+            connection.getInputStream().close();
         } catch (IOException e) {
             logger.error("Class:LocalPathFilesService, method:getTempFileContentType fail, msg: don`t get content type to url response file");
         }
@@ -63,11 +66,13 @@ public class LocalPathFilesService {
     }
 
     public void deleteLocalFile(File file, String path) {
-        boolean delete = file.delete();
-        if (delete) {
-            logger.warn("File " + file.getName() + " deleted at the path " + path);
-        } else {
-            logger.warn("File " + file.getName() + " not deleted at the path " + path);
+        while (!file.exists()) {
+            boolean delete = file.delete();
+            if (delete) {
+                logger.warn("File " + file.getName() + " deleted at the path " + path);
+            } else {
+                logger.warn("File " + file.getName() + " not deleted at the path " + path);
+            }
         }
     }
 }
