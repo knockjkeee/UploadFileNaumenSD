@@ -5,13 +5,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Scope;
 import org.springframework.core.env.Environment;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 import ru.newsystems.UploadFileNaumenSD.domain.MessageResponse;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URLConnection;
 import java.util.List;
@@ -38,7 +35,6 @@ public class LocalPathFilesService {
         } else {
             tmpdir = tmpDirFolder.get(1);
         }
-        System.out.println("tmpDirFolder = " + tmpDirFolder.get(1));
         return tmpdir + messageResponse.getFile();
     }
 
@@ -54,25 +50,12 @@ public class LocalPathFilesService {
         return fileContentType;
     }
 
-    public MultipartFile createMockMultiPartFile(MessageResponse messageResponse, String tempFileContentType, File file) {
-        MultipartFile multipartFile = null;
-        try {
-            multipartFile = new MockMultipartFile(messageResponse.getFile(), messageResponse.getFname(),
-                    tempFileContentType, new FileInputStream(file));
-        } catch (IOException e) {
-            logger.error("Class:LocalPathFilesService, method:createMockMultipartFile fail, msg: don`t create mock multi part file");
-        }
-        return multipartFile;
-    }
-
     public void deleteLocalFile(File file, String path) {
-        while (!file.exists()) {
-            boolean delete = file.delete();
-            if (delete) {
-                logger.warn("File " + file.getName() + " deleted at the path " + path);
-            } else {
-                logger.warn("File " + file.getName() + " not deleted at the path " + path);
-            }
+        boolean delete = file.delete();
+        if (delete) {
+            logger.warn("File " + file.getName() + " deleted at the path " + path);
+        } else {
+            logger.warn("File " + file.getName() + " not deleted at the path " + path);
         }
     }
 }
