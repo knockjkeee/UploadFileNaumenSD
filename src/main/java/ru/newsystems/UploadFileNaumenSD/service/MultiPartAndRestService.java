@@ -28,8 +28,8 @@ import java.util.List;
 
 @Service
 @Scope("prototype")
-public class SupportService {
-    private static final Logger logger = LoggerFactory.getLogger(SupportService.class);
+public class MultiPartAndRestService {
+    private static final Logger logger = LoggerFactory.getLogger(MultiPartAndRestService.class);
 
     @Autowired
     private RestTemplate restTemplate;
@@ -83,24 +83,18 @@ public class SupportService {
     }
 
     public HttpEntity<MultiValueMap<String, Object>> getRequestEntity(MultipartFile newMultipartFile, MessageResponse messageResponse) {
-//        MultiValueMap<String,Object> multipartRequest = new LinkedMultiValueMap<>();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
         Resource invoicesResource = newMultipartFile.getResource();
         LinkedMultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-
         body.set("file", invoicesResource);
-        System.out.println("messageResponse = " + messageResponse);
-        if (messageResponse == null) {
-            return new HttpEntity<>(body, headers);
-        } else {
+        if (messageResponse != null) {
             HttpHeaders requestHeadersJSON = new HttpHeaders();
             requestHeadersJSON.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<MessageResponse> messageResponseHttpEntity = new HttpEntity<>(messageResponse, requestHeadersJSON);
             body.set("msg", messageResponseHttpEntity);
-            return new HttpEntity<>(body, headers);
         }
+        return new HttpEntity<>(body, headers);
     }
 
     private void getLogging(MultipartFile file, String uUIDParam, MultipartFile newMultipartFile) {
