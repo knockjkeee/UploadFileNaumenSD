@@ -37,11 +37,15 @@ public class UploadFileController {
     @Autowired
     private LocalPathFilesService localPathFilesService;
 
+    public UploadFileController() {
+    }
+
     @PostConstruct
     public void postConstructController() {
         String port = environment.getProperty("server.port");
         try {
-            logger.warn("Controller is up! HOST: "+InetAddress.getLocalHost().getHostAddress()+", PORT: " + port);
+//            logger.warn("Controller is up! HOST: "+InetAddress.getLocalHost().getHostAddress()+", PORT: " + port);
+            System.out.println("Controller is up! HOST: " + InetAddress.getLocalHost().getHostAddress() + ", PORT: " + port);
         } catch (UnknownHostException e) {
             logger.error(e.getMessage());
         }
@@ -54,10 +58,10 @@ public class UploadFileController {
     ) throws IOException {
         int responseStatus = multiPartSupportService.pushMultipartFileToNaumen(file, messageResponse);
         if (responseStatus < 300) {
-            logger.warn("File load to " + messageResponse.getUuid() + ", response status: " + responseStatus);
+            System.out.println("File load to " + messageResponse.getUuid() + ", response status from Rest Naumen: " + responseStatus);
             return ResponseEntity.ok("Success: File load");
         }
-        logger.warn("Load file to " + messageResponse.getUuid() + " fail, response status: " + responseStatus);
+        System.err.println("Load file to " + messageResponse.getUuid() + " fail, response status from Rest Naumen: " + responseStatus);
         return ResponseEntity.badRequest().body("Unknown error, http code: " + responseStatus);
     }
 
@@ -67,41 +71,57 @@ public class UploadFileController {
                                                   @RequestParam("uuid") String uuid,
                                                   @RequestParam("file") String file,
                                                   @RequestParam("fname") String fname,
-                                                  @RequestParam("url") String url
+                                                  @RequestParam("url") String url,
+                                                  @RequestParam(value = "attr", required = false) String attr
     ) {
 
-        MessageResponse messageResponse = new MessageResponse(rest, accessKey, uuid, file, fname, url);
+        MessageResponse messageResponse = new MessageResponse(rest, accessKey, uuid, file, fname, url, attr);
         pushedRequestToLocalService(messageResponse);
         return ResponseEntity.ok("ok");
+    }
+
+    @GetMapping(value = "/status")
+    public String status() {
+        String port = environment.getProperty("server.port");
+        try {
+            return "App started, HOST: " + InetAddress.getLocalHost().getHostAddress() + ", PORT: " + port;
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+        return "Unknown Error";
     }
 
     public void pushedRequestToLocalService(MessageResponse messageResponse) {
         String pathFileFromMessageResponse = localPathFilesService.getPathResponseFileNameCheckOS(messageResponse);
         File localFileFromMessageResponse = new File(pathFileFromMessageResponse);
-
-        while (!localFileFromMessageResponse.exists()) {
-            try {
-                Thread.sleep(1000);
-                logger.error("File " + messageResponse.getFile() + " at the path " + pathFileFromMessageResponse + " not exist");
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-
-        String contentTypeLocalFile = localPathFilesService.getResponseTempFileContentType(localFileFromMessageResponse);
-        MultipartFile mockMultiPartFile = multiPartSupportService.createMockMultiPartFile(messageResponse, contentTypeLocalFile, localFileFromMessageResponse);
-
-        localPathFilesService.deleteLocalFile(localFileFromMessageResponse, pathFileFromMessageResponse);
-
-        HttpEntity<MultiValueMap<String, Object>> requestEntity = multiPartSupportService.getRequestEntity(mockMultiPartFile, messageResponse);
+//        while (!localFileFromMessageResponse.exists()) {
+//            try {
+//                Thread.sleep(1000);
+//                logger.error("File " + messageResponse.getFile() + " at the path " + pathFileFromMessageResponse + " not exist");
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        }
         try {
-            ResponseEntity<String> responseEntity = restTemplate.postForEntity(
-                    "http://" + InetAddress.getLocalHost().getHostAddress() + ":" +
-                            environment.getProperty("server.port") + "/api/v1/upload",
-                    requestEntity, String.class);
-        } catch (Exception e) {
+            Thread.sleep(2000);
+            if (!localFileFromMessageResponse.exists()) {
+                System.err.println("File " + messageResponse.getFile() + " at the path " + pathFileFromMessageResponse + " not exist");
+            } else {
+                String contentTypeLocalFile = localPathFilesService.getResponseTempFileContentType(localFileFromMessageResponse);
+                MultipartFile mockMultiPartFile = multiPartSupportService.createMockMultiPartFile(messageResponse, contentTypeLocalFile, localFileFromMessageResponse);
+                localPathFilesService.deleteLocalFile(localFileFromMessageResponse, pathFileFromMessageResponse);
+                HttpEntity<MultiValueMap<String, Object>> requestEntity = multiPartSupportService.getRequestEntity(mockMultiPartFile, messageResponse);
+                try {
+                    ResponseEntity<String> responseEntity = restTemplate.postForEntity(
+                            "http://" + InetAddress.getLocalHost().getHostAddress() + ":" +
+                                    environment.getProperty("server.port") + "/api/v1/upload",
+                            requestEntity, String.class);
+                } catch (Exception e) {
+                    logger.error(e.getMessage());
+                }
+            }
+        } catch (InterruptedException e) {
             logger.error(e.getMessage());
         }
     }
-
 }

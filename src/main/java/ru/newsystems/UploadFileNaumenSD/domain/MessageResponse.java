@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @Data
 @EqualsAndHashCode
@@ -19,6 +18,7 @@ public class MessageResponse {
     String file;
     String fname;
     String url;
+    String attr;
 
 }
 

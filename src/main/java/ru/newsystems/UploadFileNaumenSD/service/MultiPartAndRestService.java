@@ -52,32 +52,29 @@ public class MultiPartAndRestService {
     @Value("${getMethodAddFile}")
     private String getMethodAddFile;
 
-    public String getUUIDServiceCall(MessageResponse messageResponse) {
-        String serviceCallUrl = "http://" + host + ":" + port + restServices + "find/serviceCall/" + accessKey + "&title=INC7";
-        ResponseEntity<JsonNode> serviceCallJson = restTemplate.getForEntity(serviceCallUrl, JsonNode.class);
-        JsonNode mapServiceCall = serviceCallJson.getBody();
-        assert mapServiceCall != null;
-        List<String> availableUUUIDParam = mapServiceCall.findValuesAsText("UUID");
-        return availableUUUIDParam.get(0);
-    }
-
-    public String getCheckStatusUrl(MessageResponse messageResponse) {
-//        String url = messageResponse.getUrl() + restServices + postMethodCheckStatus;
-        return "http://" + host + ":" + port + restServices + postMethodCheckStatus;
-    }
-
-    public boolean checkPingHost() {
-        return pingHost(host, Integer.parseInt(port), 1000);
+    public MultipartFile createMockMultiPartFile(MessageResponse messageResponse, String tempFileContentType, File file) {
+        MultipartFile multipartFile = null;
+        try {
+            multipartFile = new MockMultipartFile(messageResponse.getFile(), messageResponse.getFname(),
+                    tempFileContentType, new FileInputStream(file));
+        } catch (IOException e) {
+            logger.error("Class:LocalPathFilesService, method:createMockMultipartFile fail, msg: don`t create mock multi part file");
+        }
+        return multipartFile;
     }
 
     public int pushMultipartFileToNaumen(MultipartFile file, MessageResponse messageResponse) throws IOException {
         MultipartFile newMultipartFile = new MockMultipartFile(messageResponse.getFile(), messageResponse.getFname(), file.getContentType(), file.getInputStream());
-
         HttpEntity<MultiValueMap<String, Object>> requestEntity = getRequestEntity(newMultipartFile, null);
-        String serverUrl = messageResponse.getUrl() + restServices + messageResponse.getRest() + "/" + messageResponse.getUuid() + "?accessKey=" + messageResponse.getAccessKey();
-
-        ResponseEntity<String> response = restTemplate.postForEntity(serverUrl, requestEntity, String.class);
+        String serverUrl = getServerUrlToNaumen(messageResponse);
+        ResponseEntity<String> response = null;
+        try {
+             response = restTemplate.postForEntity(serverUrl, requestEntity, String.class);
+        }catch(Exception e){
+            System.out.println(e.getMessage());
+        }
         getLogging(messageResponse, newMultipartFile);
+        assert response != null;
         return response.getStatusCodeValue();
     }
 
@@ -96,6 +93,39 @@ public class MultiPartAndRestService {
         return new HttpEntity<>(body, headers);
     }
 
+    private String getServerUrlToNaumen(MessageResponse messageResponse) {
+        return (messageResponse.getAttr() == null)
+                ? messageResponse.getUrl() + restServices + messageResponse.getRest() + "/" + messageResponse.getUuid() + "?accessKey=" + messageResponse.getAccessKey()
+                : messageResponse.getUrl() + restServices + messageResponse.getRest() + "/" + messageResponse.getUuid() + "?accessKey=" + messageResponse.getAccessKey() + "&attrCode="+messageResponse.getAttr();
+    }
+
+    private void getLogging(MessageResponse messageResponse, MultipartFile newMultipartFile) {
+        System.out.println("File pushed to Naumen SD with property: ");
+        System.out.println("{   File original name: " + messageResponse.getFile());
+        System.out.println("    File custom name: " + newMultipartFile.getOriginalFilename());
+        System.out.println("    File content type: " + newMultipartFile.getContentType());
+        System.out.println("    File size: " + newMultipartFile.getSize());
+        System.out.println("    UUID param: " + messageResponse.getUuid());
+        System.out.println("    Method push to Naumen SD: " + messageResponse.getRest() + "   }");
+    }
+
+    public String getUUIDServiceCall(MessageResponse messageResponse) {
+        String serviceCallUrl = "http://" + host + ":" + port + restServices + "find/serviceCall/" + accessKey + "&title=INC7";
+        ResponseEntity<JsonNode> serviceCallJson = restTemplate.getForEntity(serviceCallUrl, JsonNode.class);
+        JsonNode mapServiceCall = serviceCallJson.getBody();
+        assert mapServiceCall != null;
+        List<String> availableUUUIDParam = mapServiceCall.findValuesAsText("UUID");
+        return availableUUUIDParam.get(0);
+    }
+
+    public String getCheckStatusUrl(MessageResponse messageResponse) {
+        return "http://" + host + ":" + port + restServices + postMethodCheckStatus;
+    }
+
+    public boolean checkPingHost() {
+        return pingHost(host, Integer.parseInt(port), 1000);
+    }
+
     private MultipartFile getNewMultipartFileCustomName(MultipartFile file, String dateTimeNow) throws IOException {
         String originalMultipartFileName = file.getOriginalFilename();
         assert originalMultipartFileName != null;
@@ -104,27 +134,6 @@ public class MultiPartAndRestService {
         String newsMultipartFileName = subMultipartFileName.concat("_" + dateTimeNow + endSubMultipartFileName);
         MultipartFile newMultipartFile = new MockMultipartFile(file.getName(), newsMultipartFileName, file.getContentType(), file.getInputStream());
         return newMultipartFile;
-    }
-
-    public MultipartFile createMockMultiPartFile(MessageResponse messageResponse, String tempFileContentType, File file) {
-        MultipartFile multipartFile = null;
-        try {
-            multipartFile = new MockMultipartFile(messageResponse.getFile(), messageResponse.getFname(),
-                    tempFileContentType, new FileInputStream(file));
-        } catch (IOException e) {
-            logger.error("Class:LocalPathFilesService, method:createMockMultipartFile fail, msg: don`t create mock multi part file");
-        }
-        return multipartFile;
-    }
-
-    private void getLogging(MessageResponse messageResponse, MultipartFile newMultipartFile) {
-        logger.warn("File pushed to Naumen SD property: ");
-        logger.warn("File original name: " + messageResponse.getFile());
-        logger.warn("File custom name: " + newMultipartFile.getOriginalFilename());
-        logger.warn("File content type: " + newMultipartFile.getContentType());
-        logger.warn("File size: " + newMultipartFile.getSize());
-        logger.warn("UUID param: " + messageResponse.getUuid());
-        logger.warn("Method push to Naumen SD: " + messageResponse.getRest());
     }
 
     private static boolean pingHost(String host, int port, int timeout) {
